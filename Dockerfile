@@ -133,10 +133,15 @@ RUN set -e; \
 COPY --from=runner --chown=root:root /opt/runners/task-runner-javascript /opt/runners/task-runner-javascript
 COPY --from=runner --chown=root:root /opt/runners/task-runner-python /opt/runners/task-runner-python
 
-# Fix Python runner: runners image uses Python 3.13 venv but base image has Python 3.12.
-# Create a symlink so the venv's python points to the system python3.
+# Fix Python runner: runners image ships a Python 3.13 venv but the n8n base
+# image only has Python 3.12. Symlink the system python into the venv and
+# create a python3.12 site-packages directory mirroring the 3.13 packages.
 RUN ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python && \
-    ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python3
+    ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python3 && \
+    PYVER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
+    mkdir -p /opt/runners/task-runner-python/.venv/lib/python${PYVER}/site-packages && \
+    cp -a /opt/runners/task-runner-python/.venv/lib/python3.13/site-packages/* \
+        /opt/runners/task-runner-python/.venv/lib/python${PYVER}/site-packages/
 
 COPY .common/redis/ /
 
