@@ -133,6 +133,11 @@ RUN set -e; \
 COPY --from=runner --chown=root:root /opt/runners/task-runner-javascript /opt/runners/task-runner-javascript
 COPY --from=runner --chown=root:root /opt/runners/task-runner-python /opt/runners/task-runner-python
 
+# Fix Python runner: runners image uses Python 3.13 venv but base image has Python 3.12.
+# Create a symlink so the venv's python points to the system python3.
+RUN ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python && \
+    ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python3
+
 COPY .common/redis/ /
 
 COPY rootfs/ /
