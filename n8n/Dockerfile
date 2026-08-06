@@ -37,21 +37,23 @@ ARG ALPINE_VERSION=v3.23
 # database but no apk executable, so this fetches the static one and lets it
 # install apk-tools properly.
 #
-# Three things here are load-bearing; each of them has already broken a real
-# install, so do not "simplify" them back:
+# Everything below is load-bearing; each line is here because its absence
+# broke a real install. Do not "simplify" them away:
 #
 #   1. NO --initdb. The database is intact (apk.static can enumerate every
 #      installed package). Re-initialising it makes apk believe nothing is
-#      installed, and it will then reconcile the filesystem against world —
-#      which, if world is empty, purges the entire base image.
-#   2. The apk-tools-static FILENAME is resolved from the directory index.
-#      Alpine's CDN keeps only the current build per branch, so a pinned
-#      filename starts 404-ing as soon as upstream cuts a new revision.
-#   3. ONLY the `libapk2` line is removed from world, never the whole file.
-#      v3.23 moved to the apk 3.x series, whose apk-tools provides `libapk`;
-#      the image's world still pins `libapk2` by checksum from the 2.x era,
-#      and no 2.x apk-tools-static remains on the CDN to satisfy it. Every
-#      other world entry must survive, or apk will purge what it describes.
+#      installed, and it then reconciles the filesystem against world — which
+#      on an empty world purges the entire base image, busybox included.
+#   2. apk-tools-static FILENAME resolved from the directory index. Alpine's
+#      CDN keeps only the current build per branch, so a pinned filename
+#      starts 404-ing as soon as upstream cuts a new revision.
+#   3. Exact-checksum pins stripped from world. The image ships entries like
+#      `libcurl><Q10MJ...`, freezing packages at the builds available the day
+#      it was made. Each one becomes unsatisfiable when Alpine publishes a
+#      new revision and blocks unrelated installs. Names are kept, so world
+#      still describes the image's real contents and nothing is purged.
+#   4. libapk2 deleted rather than unpinned: the apk 3.x series replaced it
+#      with `libapk` and no libapk2 package exists on this branch any more.
 RUN \
     set -eux; \
     cd /tmp; \
@@ -73,7 +75,8 @@ RUN \
     wget -nv "${BASE}/${APK_FILE}"; \
     tar -xzf apk-tools-static-*.apk; \
     if [ -f /etc/apk/world ]; then \
-        sed -i '/^libapk2/d' /etc/apk/world; \
+        sed -i 's/><.*$//' /etc/apk/world; \
+        sed -i '/^libapk2$/d' /etc/apk/world; \
     fi; \
     ./sbin/apk.static -X "${REPO}" add apk-tools; \
     apk --version; \
