@@ -29,15 +29,26 @@ ENV \
 # hadolint ignore=DL3002
 USER root
 
-# renovate: datasource=repology depName=alpine_3_23/apk-tools-static versioning=loose
-ARG APK_TOOLS_VERSION=3.0.6-r0
 ARG ALPINE_VERSION=v3.23
 
 # hadolint global ignore=DL4001
+# NOTE: do NOT pin apk-tools-static. The Alpine CDN only hosts the current
+# build of each package per branch; superseded -rN builds are deleted, so a
+# pinned filename starts 404-ing the moment upstream cuts a new revision and
+# takes every add-on install down with it. Resolve the filename from the
+# directory index at build time and take the highest version present.
 RUN \
     set -eux; \
     cd /tmp; \
-    wget -nv http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main/$(uname -m)/apk-tools-static-${APK_TOOLS_VERSION}.apk; \
+    ARCH="$(uname -m)"; \
+    BASE="http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main/${ARCH}"; \
+    APK_FILE="$(wget -qO- "${BASE}/" \
+        | grep -o 'apk-tools-static-[0-9][^"]*\.apk' \
+        | sort -V \
+        | tail -n1)"; \
+    test -n "${APK_FILE}"; \
+    echo "Using ${APK_FILE}"; \
+    wget -nv "${BASE}/${APK_FILE}"; \
     tar -xzf apk-tools-static-*.apk; \
     ls -al sbin; \
     ./sbin/apk.static -X http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main --initdb add apk-tools; \
@@ -133,15 +144,22 @@ RUN set -e; \
 COPY --from=runner --chown=root:root /opt/runners/task-runner-javascript /opt/runners/task-runner-javascript
 COPY --from=runner --chown=root:root /opt/runners/task-runner-python /opt/runners/task-runner-python
 
-# Fix Python runner: runners image ships a Python 3.13 venv but the n8n base
-# image only has Python 3.12. Symlink the system python into the venv and
-# create a python3.12 site-packages directory mirroring the 3.13 packages.
+# Fix Python runner: the runners image ships a venv built against its own
+# Python minor, which may not match the n8n base image's Python. Symlink the
+# system python into the venv and mirror the shipped site-packages into the
+# directory the running interpreter will actually look in. Discover the source
+# rather than hardcoding a minor, and no-op when it already matches (copying a
+# directory into itself would fail the build).
 RUN ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python && \
     ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python3 && \
     PYVER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
-    mkdir -p /opt/runners/task-runner-python/.venv/lib/python${PYVER}/site-packages && \
-    cp -a /opt/runners/task-runner-python/.venv/lib/python3.13/site-packages/* \
-        /opt/runners/task-runner-python/.venv/lib/python${PYVER}/site-packages/
+    VENV_LIB=/opt/runners/task-runner-python/.venv/lib && \
+    mkdir -p "${VENV_LIB}/python${PYVER}/site-packages" && \
+    SRC=$(find "${VENV_LIB}" -maxdepth 1 -type d -name 'python3.*' \
+            ! -name "python${PYVER}" | head -n1) && \
+    if [ -n "${SRC}" ] && [ -d "${SRC}/site-packages" ]; then \
+        cp -a "${SRC}/site-packages/." "${VENV_LIB}/python${PYVER}/site-packages/"; \
+    fi
 
 COPY .common/redis/ /
 
