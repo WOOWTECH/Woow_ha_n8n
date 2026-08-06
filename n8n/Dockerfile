@@ -33,24 +33,25 @@ USER root
 ARG ALPINE_VERSION=v3.23
 
 # hadolint global ignore=DL4001
-# Bootstrap apk into the n8n image (upstream ships it without a usable apk
-# database). Everything here is deliberately dynamic or defensive, because
-# each hardcoded assumption has already broken installs in the field:
+# Restore a usable `apk` binary. The n8n image ships a complete, valid apk
+# database but no apk executable, so this fetches the static one and lets it
+# install apk-tools properly.
 #
-#   1. Alpine BRANCH read from the image, not hardcoded, so apk-tools always
-#      belongs to the same branch as the rootfs it lands in.
-#   2. apk-tools-static FILENAME resolved from the directory index. The
-#      Alpine CDN only hosts the current build per branch — superseded -rN
-#      revisions are deleted — so a pinned filename starts 404-ing as soon
-#      as upstream cuts a new revision.
-#   3. /etc/apk/world reset. The image's world file was written when
-#      apk-tools 3.0.6-r0 (which provided `libapk2`) was current; 3.0.7-r0
-#      renamed that to `libapk`, so the stale constraint is unsatisfiable
-#      and aborts the bootstrap with "breaks: world[libapk2>...]".
-#      --initdb rebuilds the installed DB from scratch regardless, so the
-#      old world list tracks nothing real.
-#   4. /etc/apk/repositories written if absent, because the next layer's
-#      `apk add` needs it and -X only applies to this invocation.
+# Three things here are load-bearing; each of them has already broken a real
+# install, so do not "simplify" them back:
+#
+#   1. NO --initdb. The database is intact (apk.static can enumerate every
+#      installed package). Re-initialising it makes apk believe nothing is
+#      installed, and it will then reconcile the filesystem against world —
+#      which, if world is empty, purges the entire base image.
+#   2. The apk-tools-static FILENAME is resolved from the directory index.
+#      Alpine's CDN keeps only the current build per branch, so a pinned
+#      filename starts 404-ing as soon as upstream cuts a new revision.
+#   3. ONLY the `libapk2` line is removed from world, never the whole file.
+#      v3.23 moved to the apk 3.x series, whose apk-tools provides `libapk`;
+#      the image's world still pins `libapk2` by checksum from the 2.x era,
+#      and no 2.x apk-tools-static remains on the CDN to satisfy it. Every
+#      other world entry must survive, or apk will purge what it describes.
 RUN \
     set -eux; \
     cd /tmp; \
@@ -71,16 +72,11 @@ RUN \
     echo "Using ${APK_FILE} from ${BASE}"; \
     wget -nv "${BASE}/${APK_FILE}"; \
     tar -xzf apk-tools-static-*.apk; \
-    mkdir -p /etc/apk; \
-    : > /etc/apk/world; \
-    ./sbin/apk.static -X "${REPO}" --initdb add apk-tools; \
-    if [ ! -s /etc/apk/repositories ]; then \
-        printf '%s\n%s\n' \
-            "${REPO}" \
-            "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_BRANCH}/community" \
-            > /etc/apk/repositories; \
+    if [ -f /etc/apk/world ]; then \
+        sed -i '/^libapk2/d' /etc/apk/world; \
     fi; \
-    cat /etc/apk/repositories; \
+    ./sbin/apk.static -X "${REPO}" add apk-tools; \
+    apk --version; \
     rm -rf /tmp/*
 
 RUN \
