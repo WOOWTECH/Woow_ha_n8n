@@ -29,29 +29,44 @@ ENV \
 # hadolint ignore=DL3002
 USER root
 
+# Fallback only — the branch is normally read from /etc/alpine-release below.
 ARG ALPINE_VERSION=v3.23
 
 # hadolint global ignore=DL4001
-# NOTE: do NOT pin apk-tools-static. The Alpine CDN only hosts the current
-# build of each package per branch; superseded -rN builds are deleted, so a
-# pinned filename starts 404-ing the moment upstream cuts a new revision and
-# takes every add-on install down with it. Resolve the filename from the
-# directory index at build time and take the highest version present.
+# Bootstrapping apk into the n8n image (upstream ships it without a usable
+# apk database). Two things here are deliberately dynamic, both because
+# hardcoding them has already broken installs in the field:
+#
+#   1. The Alpine BRANCH is read from the base image itself. Hardcoding it
+#      decouples apk-tools from the rootfs it is being installed into: a
+#      branch on the apk 3.x series (libapk) cannot satisfy a world file
+#      pinned to apk 2.x (libapk2), and the bootstrap fails with
+#      "breaks: world[libapk2>...]".
+#   2. The apk-tools-static FILENAME is resolved from the directory index.
+#      The Alpine CDN only hosts the current build of each package per
+#      branch — superseded -rN revisions are deleted — so a pinned filename
+#      starts 404-ing as soon as upstream cuts a new revision.
 RUN \
     set -eux; \
     cd /tmp; \
     ARCH="$(uname -m)"; \
-    BASE="http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main/${ARCH}"; \
+    if [ -r /etc/alpine-release ]; then \
+        ALPINE_BRANCH="v$(cut -d. -f1,2 /etc/alpine-release)"; \
+    else \
+        ALPINE_BRANCH="${ALPINE_VERSION}"; \
+    fi; \
+    echo "Base image Alpine branch: ${ALPINE_BRANCH}"; \
+    REPO="http://dl-cdn.alpinelinux.org/alpine/${ALPINE_BRANCH}/main"; \
+    BASE="${REPO}/${ARCH}"; \
     APK_FILE="$(wget -qO- "${BASE}/" \
         | grep -o 'apk-tools-static-[0-9][^"]*\.apk' \
         | sort -V \
         | tail -n1)"; \
     test -n "${APK_FILE}"; \
-    echo "Using ${APK_FILE}"; \
+    echo "Using ${APK_FILE} from ${BASE}"; \
     wget -nv "${BASE}/${APK_FILE}"; \
     tar -xzf apk-tools-static-*.apk; \
-    ls -al sbin; \
-    ./sbin/apk.static -X http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main --initdb add apk-tools; \
+    ./sbin/apk.static -X "${REPO}" --initdb add apk-tools; \
     rm -rf /tmp/*
 
 RUN \
