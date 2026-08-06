@@ -33,19 +33,24 @@ USER root
 ARG ALPINE_VERSION=v3.23
 
 # hadolint global ignore=DL4001
-# Bootstrapping apk into the n8n image (upstream ships it without a usable
-# apk database). Two things here are deliberately dynamic, both because
-# hardcoding them has already broken installs in the field:
+# Bootstrap apk into the n8n image (upstream ships it without a usable apk
+# database). Everything here is deliberately dynamic or defensive, because
+# each hardcoded assumption has already broken installs in the field:
 #
-#   1. The Alpine BRANCH is read from the base image itself. Hardcoding it
-#      decouples apk-tools from the rootfs it is being installed into: a
-#      branch on the apk 3.x series (libapk) cannot satisfy a world file
-#      pinned to apk 2.x (libapk2), and the bootstrap fails with
-#      "breaks: world[libapk2>...]".
-#   2. The apk-tools-static FILENAME is resolved from the directory index.
-#      The Alpine CDN only hosts the current build of each package per
-#      branch — superseded -rN revisions are deleted — so a pinned filename
-#      starts 404-ing as soon as upstream cuts a new revision.
+#   1. Alpine BRANCH read from the image, not hardcoded, so apk-tools always
+#      belongs to the same branch as the rootfs it lands in.
+#   2. apk-tools-static FILENAME resolved from the directory index. The
+#      Alpine CDN only hosts the current build per branch — superseded -rN
+#      revisions are deleted — so a pinned filename starts 404-ing as soon
+#      as upstream cuts a new revision.
+#   3. /etc/apk/world reset. The image's world file was written when
+#      apk-tools 3.0.6-r0 (which provided `libapk2`) was current; 3.0.7-r0
+#      renamed that to `libapk`, so the stale constraint is unsatisfiable
+#      and aborts the bootstrap with "breaks: world[libapk2>...]".
+#      --initdb rebuilds the installed DB from scratch regardless, so the
+#      old world list tracks nothing real.
+#   4. /etc/apk/repositories written if absent, because the next layer's
+#      `apk add` needs it and -X only applies to this invocation.
 RUN \
     set -eux; \
     cd /tmp; \
@@ -66,7 +71,16 @@ RUN \
     echo "Using ${APK_FILE} from ${BASE}"; \
     wget -nv "${BASE}/${APK_FILE}"; \
     tar -xzf apk-tools-static-*.apk; \
+    mkdir -p /etc/apk; \
+    : > /etc/apk/world; \
     ./sbin/apk.static -X "${REPO}" --initdb add apk-tools; \
+    if [ ! -s /etc/apk/repositories ]; then \
+        printf '%s\n%s\n' \
+            "${REPO}" \
+            "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_BRANCH}/community" \
+            > /etc/apk/repositories; \
+    fi; \
+    cat /etc/apk/repositories; \
     rm -rf /tmp/*
 
 RUN \
