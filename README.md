@@ -3,10 +3,10 @@
 [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FWOOWTECH%2FWoow_ha_n8n)
 
 Home Assistant add-on repository for [n8n](https://n8n.io) workflow automation
-(HTTP/LAN variant — use a Cloudflare Tunnel for HTTPS).
+(HTTP/LAN origin with first-class Cloudflare Tunnel support for the complete HTTPS UI, API, webhooks, and WebSocket).
 
 n8n 工作流程自動化平台的 Home Assistant add-on 倉庫
-(HTTP 區網版本,對外請以 Cloudflare Tunnel 建立 HTTPS)。
+(HTTP 區網 origin，支援透過 Cloudflare Tunnel 對外提供完整 HTTPS UI、API、Webhook 與 WebSocket)。
 
 ## Add-ons in this repository | 本倉庫的 add-on
 
