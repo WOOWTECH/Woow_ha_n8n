@@ -1,0 +1,72 @@
+name: Publish n8n add-on images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - n8n/config.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.arch }} image
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: aarch64
+            platform: linux/arm64
+    steps:
+      - name: Check out the release source
+        uses: actions/checkout@v4
+
+      - name: Read the add-on version
+        id: addon
+        shell: bash
+        run: |
+          version="$(awk -F': ' '$1 == "version" { print $2; exit }' n8n/config.yaml)"
+          [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Record image build date
+        id: metadata
+        shell: bash
+        run: echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./n8n
+          file: ./n8n/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: ghcr.io/woowtech/woow-ha-n8n-${{ matrix.arch }}:${{ steps.addon.outputs.version }}
+          build-args: |
+            BUILD_ARCH=${{ matrix.arch }}
+            BUILD_VERSION=${{ steps.addon.outputs.version }}
+            BUILD_DATE=${{ steps.metadata.outputs.created }}
+            BUILD_DESCRIPTION=Flexible AI workflow automation (HTTP for LAN, use Cloudflare Tunnel for HTTPS)
+            BUILD_NAME=Woow n8n
+            BUILD_REF=${{ github.sha }}
+            BUILD_REPOSITORY=${{ github.repository }}
