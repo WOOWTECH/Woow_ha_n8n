@@ -27,13 +27,14 @@ def main() -> None:
     )
     assert compatibility_check in bootstrap
     assert 'APK_STATIC="${CANDIDATE_DIR}/sbin/apk.static"' in bootstrap
+    assert 'APK_REPO="http://dl-cdn.alpinelinux.org/alpine/${STATIC_BRANCH}/main"' in bootstrap
     assert "No apk-tools-static candidate can read the base apk database" in bootstrap
 
     # The static binary must only be used after it has successfully read the
     # pre-existing database; installing against an initialized/empty database
     # would reconcile world by deleting the base image's packages.
     assert bootstrap.index(compatibility_check) < bootstrap.index("sed -i 's/><.*$//'")
-    assert '"${APK_STATIC}" -X "${REPO}" add apk-tools;' in bootstrap
+    assert '"${APK_STATIC}" -X "${APK_REPO}" add apk-tools;' in bootstrap
     assert "apk del" not in bootstrap
 
     print("apk bootstrap test passed: compatible static fallback and base database preservation verified")

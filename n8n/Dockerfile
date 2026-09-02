@@ -72,7 +72,7 @@ RUN \
         ALPINE_BRANCH="${ALPINE_VERSION}"; \
     fi; \
     echo "Base image Alpine branch: ${ALPINE_BRANCH}"; \
-    REPO="http://dl-cdn.alpinelinux.org/alpine/${ALPINE_BRANCH}/main"; \
+    APK_REPO=""; \
     APK_STATIC=""; \
     for STATIC_BRANCH in "${ALPINE_BRANCH}" v3.22; do \
         STATIC_BASE="http://dl-cdn.alpinelinux.org/alpine/${STATIC_BRANCH}/main/${ARCH}"; \
@@ -88,16 +88,17 @@ RUN \
         tar -xzf "${CANDIDATE_DIR}/apk-tools-static.apk" -C "${CANDIDATE_DIR}"; \
         if "${CANDIDATE_DIR}/sbin/apk.static" --no-network info >/dev/null 2>&1; then \
             APK_STATIC="${CANDIDATE_DIR}/sbin/apk.static"; \
+            APK_REPO="http://dl-cdn.alpinelinux.org/alpine/${STATIC_BRANCH}/main"; \
             break; \
         fi; \
         rm -rf "${CANDIDATE_DIR}"; \
     done; \
-    test -n "${APK_STATIC}" || { echo "No apk-tools-static candidate can read the base apk database" >&2; exit 1; }; \
+    test -n "${APK_STATIC}" && test -n "${APK_REPO}" || { echo "No apk-tools-static candidate can read the base apk database" >&2; exit 1; }; \
     if [ -f /etc/apk/world ]; then \
         sed -i 's/><.*$//' /etc/apk/world; \
         sed -i '/^libapk2$/d' /etc/apk/world; \
     fi; \
-    "${APK_STATIC}" -X "${REPO}" add apk-tools; \
+    "${APK_STATIC}" -X "${APK_REPO}" add apk-tools; \
     apk --version; \
     rm -rf /tmp/*
 
