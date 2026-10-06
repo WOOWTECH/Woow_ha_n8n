@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "repository": "WOOWTECH/Woow_ha_n8n",
+  "components": {
+    "woow-n8n": {
+      "id": "woow-n8n",
+      "name": "Woow n8n",
+      "version": "2.12.17",
+      "repository": "WOOWTECH/Woow_ha_n8n",
+      "source_sha": "e8723ee9759e556535ae3b8bf38b98abfc13e1b4",
+      "source_path": "n8n",
+      "config_file": "config.yaml",
+      "config_sha256": "sha256:3884755d23fd8ba9980abc998797f975ba6320cf4ccbe5ba26c7d1f2340ea27e",
+      "archive_sha256": "sha256:d5b5fced7a312fd786586b353e223941c01d4cccb85d06b7140a3d59d6970969",
+      "context_fingerprint": "sha256:952a0d45ad91691d48b669a5619c969424dd13f93981a1d1e0a2f2135b4a7413",
+      "material_fingerprint": "sha256:537428573b15fcd16e5870ae973d4f7437e47755d314ecba7c0b4c459232370d",
+      "architectures": [
+        "aarch64",
+        "amd64"
+      ],
+      "config": {
+        "name": "Woow n8n",
+        "version": "2.12.17",
+        "slug": "woow-n8n",
+        "image": "ghcr.io/woowtech/woow-ha-n8n-{arch}",
+        "description": "Flexible AI workflow automation (HTTP for LAN, use Cloudflare Tunnel for HTTPS)",
+        "url": "https://github.com/WOOWTECH/Woow_ha_n8n",
+        "webui": "http://[HOST]:[PORT:5678]",
+        "hassio_api": true,
+        "ingress": true,
+        "ingress_port": 5690,
+        "ingress_entry": "signin",
+        "ingress_stream": true,
+        "panel_icon": "mdi:sitemap-outline",
+        "panel_title": "n8n",
+        "panel_admin": true,
+        "watchdog": "http://[HOST]:[PORT:5690]/healthz",
+        "arch": [
+          "aarch64",
+          "amd64"
+        ],
+        "init": false,
+        "map": [
+          {
+            "type": "addon_config",
+            "read_only": false
+          },
+          {
+            "type": "share",
+            "read_only": false
+          },
+          {
+            "type": "media",
+            "read_only": false
+          }
+        ],
+        "backup": "cold",
+        "backup_exclude": [
+          "**/logs"
+        ],
+        "schema": {
+          "N8N_LOG_LEVEL": "list(error|warn|info|debug)",
+          "TZ": "str?",
+          "GENERIC_TIMEZONE": "str?",
+          "N8N_HOST": "str?",
+          "N8N_PATH": "str?",
+          "N8N_EDITOR_BASE_URL": "url?",
+          "N8N_WEBHOOK_URL": "url?",
+          "WEBHOOK_URL": "url?",
+          "N8N_PROXY_HOPS": "int(0,)?",
+          "N8N_SECURE_COOKIE": "bool",
+          "clean_redis": "bool?",
+          "env_vars": [
+            {
+              "key": "match(^[A-Za-z0-9_-]+$)",
+              "value": "str"
+            }
+          ]
+        },
+        "options": {
+          "N8N_LOG_LEVEL": "info",
+          "N8N_SECURE_COOKIE": false,
+          "env_vars": []
+        },
+        "ports": {
+          "5678/tcp": 5678
+        },
+        "ports_description": {
+          "5678/tcp": "Web UI"
+        }
+      },
+      "source_build_supported": true,
+      "images": {
+        "aarch64": {
+          "reference": "ghcr.io/woowtech/woow-ha-n8n-aarch64:2.12.17",
+          "index_digest": "sha256:39b2ccc3e2a4974e7875a942b6ea0b3c0088cb98334d89ee1d85519f7ff54126",
+          "digest": "sha256:30f4a83e8799e7c27da46b25d4076ecef7f9012cb1a802e6eecc6ed4d76e327b",
+          "source_revision": "195f131508f64c0292ae857fe02c62e316745f46"
+        },
+        "amd64": {
+          "reference": "ghcr.io/woowtech/woow-ha-n8n-amd64:2.12.17",
+          "index_digest": "sha256:f668d22207215d0f0887c385e9c31252b41ae3bf81ce5108f2760459b7a39adf",
+          "digest": "sha256:760f0a95f6046bef7cae8bad32ce89776c22bb8eebdb8e578215b66606eeddcc",
+          "source_revision": "195f131508f64c0292ae857fe02c62e316745f46"
+        }
+      },
+      "delivery": "published-image",
+      "validation": "manifest+architecture-images+configured-CI",
+      "publisher_run_id": "37410365503",
+      "channel": "stable"
+    }
+  }
+}
