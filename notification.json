@@ -7,11 +7,11 @@
       "name": "Woow n8n",
       "version": "2.12.17",
       "repository": "WOOWTECH/Woow_ha_n8n",
-      "source_sha": "e8723ee9759e556535ae3b8bf38b98abfc13e1b4",
+      "source_sha": "429cc367e99d3f6abc3d052f8d554bf23dd76999",
       "source_path": "n8n",
       "config_file": "config.yaml",
       "config_sha256": "sha256:3884755d23fd8ba9980abc998797f975ba6320cf4ccbe5ba26c7d1f2340ea27e",
-      "archive_sha256": "sha256:d5b5fced7a312fd786586b353e223941c01d4cccb85d06b7140a3d59d6970969",
+      "archive_sha256": "sha256:57925779f45a7947ff91d051ce64f92fcf3f59ae0998e4ff9bddbfc4b099712e",
       "context_fingerprint": "sha256:952a0d45ad91691d48b669a5619c969424dd13f93981a1d1e0a2f2135b4a7413",
       "material_fingerprint": "sha256:537428573b15fcd16e5870ae973d4f7437e47755d314ecba7c0b4c459232370d",
       "architectures": [
@@ -106,7 +106,7 @@
       },
       "delivery": "published-image",
       "validation": "manifest+architecture-images+configured-CI",
-      "publisher_run_id": "37410365503",
+      "publisher_run_id": "38209688852",
       "channel": "stable"
     }
   }
