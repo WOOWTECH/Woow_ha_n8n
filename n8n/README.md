@@ -202,6 +202,7 @@ Add-on 2.43.6 將內建 n8n 從 2.12.3 升到 2.43.6，更新前請先看完：
 - **回滾只能還原備份。** 在已遷移的資料上改裝舊版 add-on 不是回滾；請還原更新前的備份，它會連同未遷移的資料庫一起回到 2.12.x 版 add-on。
 - **讓第一次啟動跑完。** 資料庫大時第一次啟動可能要好幾分鐘；日誌出現 `Migrations in progress, please do NOT stop the process.` 時請勿停止或重新啟動 add-on。在 n8n 第一次就緒前，Supervisor watchdog 會得到「啟動中」的回應，不會在遷移途中重啟 add-on（若一小時仍未就緒，才交還給 watchdog 處理）。
 - **升級後要重建 n8n API key。** 舊 API key 只帶有建立當時存在的 scope，較新的 scope（例如 n8n 2.30 起的發布工作流程）不在其中，部分 public API 呼叫會回 403。請在 n8n **Settings → n8n API** 建立新 key 並選擇需要的 scope（All／Read only／Custom），更新使用它的工具（例如 **Woow n8n MCP** add-on）後再刪除舊 key。
+- **資料夾需要新 key 並註冊實例。** n8n 2.43 的資料夾 API（Woow n8n MCP 的 `n8n_manage_folders` 工具會用到）只接受帶 `folder:*` scope 的 API key，而且實例要先註冊免費 Community 功能（**Settings → Usage and plan**）；2.12 建立的舊 key 即使註冊後也會被拒。
 - **Instance-level MCP（選用）。** n8n 2.43 可以直接提供 MCP 伺服器：**Settings → Instance-level MCP → Enable MCP access**，選擇要開放的工作流程，在 **Connection details** 取得 access token。**Woow n8n MCP** add-on 0.2.1 起有對應的選填欄位。
 
 ---
