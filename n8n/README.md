@@ -132,9 +132,9 @@ Then navigate to **Settings → Add-ons → Add-on Store**, find "Woow n8n" and 
 | `N8N_HOST` | 字串 | （自動偵測） | 主機名稱或 IP |
 | `N8N_PATH` | 字串 | `/` | n8n 部署路徑 |
 | `N8N_EDITOR_BASE_URL` | URL | （空） | 透過反向代理開啟編輯器時的完整公開 HTTPS URL |
-| `N8N_WEBHOOK_URL` | URL | （自動產生） | 公開 Webhook URL（內建 n8n 2.43 使用此設定）；會與舊名稱自動同步 |
-| `WEBHOOK_URL` | URL | （自動產生） | 舊版名稱（已棄用），保留相容；會與新版設定自動同步 |
-| `N8N_PROXY_HOPS` | 整數 | （空） | n8n 前方可信任的反向代理層數；標準 Cloudflare Tunnel 設為 `1` |
+| `N8N_WEBHOOK_URL` | URL | （自動產生） | 公開 Webhook URL（內建 n8n 2.43 使用此設定）；未設定時為 `http://<HA IP>:5678` |
+| `WEBHOOK_URL` | URL | （空） | 舊版名稱（已棄用）；若有設定會複製到 `N8N_WEBHOOK_URL`，但 n8n 會出現棄用警告，建議改用新名稱 |
+| `N8N_PROXY_HOPS` | 整數 | `1` | n8n 前方可信任的反向代理層數；預設 `1` 同時適用 Cloudflare Tunnel 與 HA Ingress（Ingress nginx 只把用戶端位址交給 n8n） |
 | `N8N_SECURE_COOKIE` | 布林 | `false` | HTTP 版本會在啟動時強制有效值為 `false`，避免 n8n 在 `http://` 下阻擋登入 |
 | `clean_redis` | 布林 | `false` | 啟動時刪除 Redis 資料檔（`/config/redis/dump.rdb`） |
 | `env_vars` | 列表 | `[]` | 自訂環境變數（key-value 對） |
@@ -178,7 +178,6 @@ env_vars:
    N8N_HOST: n8n.your-domain.com
    N8N_EDITOR_BASE_URL: https://n8n.your-domain.com
    N8N_WEBHOOK_URL: https://n8n.your-domain.com
-   WEBHOOK_URL: https://n8n.your-domain.com
    N8N_PROXY_HOPS: 1
    N8N_SECURE_COOKIE: false
    ```
@@ -233,7 +232,8 @@ Home Assistant Supervisor 安裝時會直接拉取預建且有版本標籤的映
 
 - 連接埠：`5678`（HTTP）
 - 資料儲存：SQLite
-- Task Runner：支援 JavaScript 與 Python
+- Task Runner：支援 JavaScript 與 Python（Python Code 節點使用 n8n runners 映像內建的 CPython 3.13；容器 shell 的 `python3` 是 Alpine 的 3.14）
+- n8n 不依賴 Redis：Redis 無法啟動時只影響使用 Redis 的工作流程
 
 ### Redis（供工作流程使用）
 

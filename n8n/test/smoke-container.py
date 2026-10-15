@@ -166,6 +166,24 @@ def check_csp(addon: Addon) -> None:
     )
 
 
+def check_proxy_logs(addon: Addon) -> None:
+    """Proxied requests (cloudflared-like) must not trip n8n's rate limiter
+    validation, and the add-on must not set the deprecated WEBHOOK_URL."""
+    subprocess.run(
+        ["curl", "-s", "-o", "/dev/null", "-H", "X-Forwarded-For: 203.0.113.9",
+         addon.url("/rest/settings")],
+        check=True,
+    )
+    time.sleep(1)
+    logs = addon.logs()
+    assert "ERR_ERL_UNEXPECTED_X_FORWARDED_FOR" not in logs, (
+        "n8n does not trust the proxy hop (N8N_PROXY_HOPS)"
+    )
+    assert "WEBHOOK_URL -> Use N8N_WEBHOOK_URL" not in logs, (
+        "the add-on still sets the deprecated WEBHOOK_URL"
+    )
+
+
 def check_seam(addon: Addon, workdir: Path) -> None:
     public = workdir / "public"
     docker("cp", f"{addon.name}:/config/.cache/n8n/public", str(public))
@@ -190,6 +208,8 @@ def browser_check(addon: Addon, workdir: Path, workflow_id: str) -> None:
         "      proxy_http_version 1.1;\n"
         "      proxy_set_header Host $http_host;\n"
         f"      proxy_set_header X-Ingress-Path {INGRESS_PATH};\n"
+        # HA Core and Supervisor each append their peer to X-Forwarded-For.
+        "      proxy_set_header X-Forwarded-For \"$remote_addr, 172.30.32.1\";\n"
         "      proxy_set_header Upgrade $http_upgrade;\n"
         "      proxy_set_header Connection $connection_upgrade;\n"
         "      proxy_buffering off;\n"
@@ -290,6 +310,7 @@ def main() -> None:
             check_secret_hygiene(addon)
             if browser:
                 browser_check(addon, workdir, str(workflow["id"]))
+            check_proxy_logs(addon)
 
             token = addon.exec("cat /data/n8n-runners-auth-token").strip()
             addon.restart()

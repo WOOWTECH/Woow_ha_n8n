@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import http.client
+import json
 import shutil
 import socket
 import subprocess
@@ -46,6 +47,19 @@ class BackendHandler(BaseHTTPRequestHandler):
             body = b'{"status":"ok"}' if status == 200 else b'{"status":"error"}'
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if path == "/echo-forwarded":
+            body = json.dumps(
+                {
+                    "xff": self.headers.get("X-Forwarded-For"),
+                    "real": self.headers.get("X-Real-IP"),
+                }
+            ).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -332,6 +346,25 @@ def main() -> None:
                     assert header_values(headers, "Content-Type") == [], headers
                     assert_cache_control(headers, UPSTREAM_CACHE_CONTROL)
                     assert_fixture_validators(headers)
+
+                # X-Forwarded-For: Supervisor sends "<Core input>, <client>, <Core>";
+                # n8n (trusting one hop) must get only the client as seen by Core.
+                forwarded_cases = (
+                    ("198.51.100.9, 203.0.113.7, 172.30.32.1", "203.0.113.7"),
+                    ("203.0.113.7, 172.30.32.1", "203.0.113.7"),
+                    ("203.0.113.7,172.30.32.1", "203.0.113.7"),
+                    ("2001:db8::7, 172.30.32.1", "2001:db8::7"),
+                    ("203.0.113.7", "203.0.113.7"),
+                    (None, "127.0.0.1"),
+                )
+                for incoming, expected in forwarded_cases:
+                    headers = {"X-Ingress-Path": INGRESS_PATH}
+                    if incoming is not None:
+                        headers["X-Forwarded-For"] = incoming
+                    status, _headers, body = request(ingress_port, "/echo-forwarded", headers)
+                    assert status == 200, status
+                    seen = json.loads(body)
+                    assert seen == {"xff": expected, "real": expected}, (incoming, seen)
 
                 # Supervisor watchdog: readiness while starting (marker) vs. after.
                 def watchdog() -> tuple[int, bytes]:

@@ -6,7 +6,7 @@
 
 This monolithic package includes:
 
-- **n8n**: workflow automations, with external JavaScript and Python task runners
+- **n8n**: workflow automations, with external JavaScript and Python task runners (the Python Code node runs on upstream's CPython 3.13 from the n8n runners image; `python3` in the container shell is Alpine's 3.14)
 - **Redis**: a local Redis for your workflows (for example the Redis node) on `localhost:6379`; n8n itself does not use it
 
 [Official n8n Documentation](https://docs.n8n.io/)
@@ -41,13 +41,12 @@ This design simplifies the setup for users who access n8n only within their home
      N8N_HOST: n8n.example.com
      N8N_EDITOR_BASE_URL: https://n8n.example.com
      N8N_WEBHOOK_URL: https://n8n.example.com
-     WEBHOOK_URL: https://n8n.example.com
      N8N_PROXY_HOPS: 1
      N8N_SECURE_COOKIE: false
      ```
    - Restart the add-on.
 
-The bundled n8n (2.43) reads `N8N_WEBHOOK_URL`; the add-on mirrors it with the deprecated `WEBHOOK_URL` alias so configurations written for older releases keep working. Keep `N8N_PROTOCOL=http`: TLS terminates at Cloudflare while the add-on origin remains HTTP. The add-on forces the effective `N8N_SECURE_COOKIE=false` value at boot so the same installation remains browseable over direct HTTP and HA Ingress.
+The bundled n8n (2.43) reads `N8N_WEBHOOK_URL`. A `WEBHOOK_URL` from an older configuration is still honoured (it is copied to `N8N_WEBHOOK_URL`), but n8n then warns that the name is deprecated; move the value to `N8N_WEBHOOK_URL`. `N8N_PROXY_HOPS` defaults to `1`, which is correct for both entrances: Cloudflare (cloudflared is the one proxy in front of port 5678) and HA Ingress (the add-on's ingress nginx passes n8n a single client address). Keep `N8N_PROTOCOL=http`: TLS terminates at Cloudflare while the add-on origin remains HTTP. The add-on forces the effective `N8N_SECURE_COOKIE=false` value at boot so the same installation remains browseable over direct HTTP and HA Ingress.
 
 Cloudflare Tunnel supports WebSockets, so the editor's `/rest/push` connection works on the same public HTTPS hostname. This publishes the complete n8n entry point; protect the n8n owner account with a strong password. Cloudflare Access on the same hostname needs explicit bypass rules for public webhook paths.
 

@@ -89,12 +89,18 @@ run_init() {
 legacy_dir="$(run_init legacy WEBHOOK_URL=https://legacy.example.test/)"
 [[ "$(<"${legacy_dir}/N8N_WEBHOOK_URL")" == "https://legacy.example.test/" ]]
 
+# The deprecated WEBHOOK_URL is never set by the add-on itself (n8n 2.43
+# warns about it on every start); only a user's own legacy value is mirrored.
 modern_dir="$(run_init modern N8N_WEBHOOK_URL=https://modern.example.test/)"
-[[ "$(<"${modern_dir}/WEBHOOK_URL")" == "https://modern.example.test/" ]]
+[[ ! -e "${modern_dir}/WEBHOOK_URL" ]]
 
 fallback_dir="$(run_init fallback)"
-[[ "$(<"${fallback_dir}/WEBHOOK_URL")" == "http://192.0.2.10:5678" ]]
+[[ ! -e "${fallback_dir}/WEBHOOK_URL" ]]
 [[ "$(<"${fallback_dir}/N8N_WEBHOOK_URL")" == "http://192.0.2.10:5678" ]]
+# One trusted proxy hop (ingress nginx or cloudflared) unless the user chose.
+[[ "$(<"${fallback_dir}/N8N_PROXY_HOPS")" == "1" ]]
+hops_dir="$(run_init hops N8N_PROXY_HOPS=2)"
+[[ ! -e "${hops_dir}/N8N_PROXY_HOPS" ]]
 [[ "$(<"${fallback_dir}/N8N_HOST")" == "192.0.2.10" ]]
 [[ "$(<"${fallback_dir}/N8N_PROTOCOL")" == "http" ]]
 [[ "$(<"${fallback_dir}/N8N_SECURE_COOKIE")" == "false" ]]

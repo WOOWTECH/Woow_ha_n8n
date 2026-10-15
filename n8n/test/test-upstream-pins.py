@@ -50,6 +50,12 @@ def main() -> None:
     assert "LAUNCHER_VERSION" not in dockerfile, (
         "a separately pinned launcher can drift from the runners it starts"
     )
+    # The Python runner keeps the interpreter its venv was built for.
+    assert "FROM runner AS runner-python" in dockerfile
+    assert "COPY --from=runner-python /woow-python/ /" in dockerfile
+    assert "ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python" not in dockerfile, (
+        "the Python runner venv must not be re-pointed at the base image's python3"
+    )
 
     current = addon_info["source"]["current_version"]
     assert current == f"n8n@{upstream_version}", (

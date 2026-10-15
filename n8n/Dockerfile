@@ -9,6 +9,21 @@ ARG BUILD_VERSION=2.43.6
 
 FROM docker.io/n8nio/runners:${N8N_UPSTREAM_VERSION} AS runner
 
+# The Python task runner's virtualenv and its compiled dependencies are built
+# for the runners image's own CPython (3.13 for n8n 2.43), not for the
+# distribution python3 of the n8n base (3.14). Stage that interpreter, found
+# through the venv's own symlink, so it is copied without naming a version.
+FROM runner AS runner-python
+# hadolint ignore=DL3002
+USER root
+RUN set -eu; \
+    py="$(readlink -f /opt/runners/task-runner-python/.venv/bin/python)"; \
+    name="$(basename "${py}")"; \
+    mkdir -p /woow-python/usr/local/bin /woow-python/usr/local/lib; \
+    cp -a "${py}" /woow-python/usr/local/bin/; \
+    cp -a "/usr/local/lib/${name}" /woow-python/usr/local/lib/; \
+    cp -a /usr/local/lib/lib"${name}".so* /woow-python/usr/local/lib/
+
 FROM ${BUILD_FROM}
 
 # n8n environment variables
@@ -191,22 +206,13 @@ COPY --from=runner --chown=root:root /usr/local/bin/task-runner-launcher /usr/lo
 COPY --from=runner --chown=root:root /opt/runners/task-runner-javascript /opt/runners/task-runner-javascript
 COPY --from=runner --chown=root:root /opt/runners/task-runner-python /opt/runners/task-runner-python
 
-# Fix Python runner: the runners image ships a venv built against its own
-# Python minor, which may not match the n8n base image's Python. Symlink the
-# system python into the venv and mirror the shipped site-packages into the
-# directory the running interpreter will actually look in. Discover the source
-# rather than hardcoding a minor, and no-op when it already matches (copying a
-# directory into itself would fail the build).
-RUN ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python && \
-    ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python3 && \
-    PYVER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
-    VENV_LIB=/opt/runners/task-runner-python/.venv/lib && \
-    mkdir -p "${VENV_LIB}/python${PYVER}/site-packages" && \
-    SRC=$(find "${VENV_LIB}" -maxdepth 1 -type d -name 'python3.*' \
-            ! -name "python${PYVER}" | head -n1) && \
-    if [ -n "${SRC}" ] && [ -d "${SRC}/site-packages" ]; then \
-        cp -a "${SRC}/site-packages/." "${VENV_LIB}/python${PYVER}/site-packages/"; \
-    fi
+# Upstream's Python interpreter for the Python runner (see the runner-python
+# stage). The venv already points at /usr/local/bin/python3.X; the base
+# image's python3 (used by Execute Command and shells) stays untouched.
+COPY --from=runner-python /woow-python/ /
+RUN cd /opt/runners/task-runner-python \
+    && .venv/bin/python -I -c "import ssl, sqlite3, ctypes, lzma, bz2, zlib, decimal, hashlib, json, asyncio, uuid, websockets, sentry_sdk, urllib3, certifi; import src.main" \
+    && .venv/bin/python -I -c "import sys; print('Python task runner interpreter', sys.version.split()[0])"
 
 COPY .common/redis/ /
 

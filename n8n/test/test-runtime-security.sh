@@ -210,6 +210,11 @@ done
 [[ -e "${S6}/svc-n8n/dependencies.d/svc-runner" ]] || fail "n8n would stop after its task runners"
 [[ ! -e "${S6}/svc-runner/dependencies.d/svc-n8n" ]] || fail "task runners would stop before n8n"
 [[ -e "${S6}/svc-runner/dependencies.d/init-keygen" ]] || fail "launcher may start before its token exists"
+# n8n does not use Redis: a Redis that refuses to start (e.g. its ARM64
+# copy-on-write self-check) must not keep n8n down. Redis is started on its own.
+[[ ! -e "${S6}/svc-n8n/dependencies.d/svc-redis" ]] || fail "n8n waits for Redis"
+[[ -e "${ADDON_DIR}/.common/redis/etc/s6-overlay/s6-rc.d/user/contents.d/svc-redis" ]] \
+    || fail "Redis is no longer started without the n8n dependency"
 
 # --- Redis --------------------------------------------------------------------
 grep -q -- '--bind 127.0.0.1 -::1' "${REDIS_RUN}" || fail "Redis is not loopback-only"
