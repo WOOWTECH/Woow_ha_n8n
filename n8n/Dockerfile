@@ -5,7 +5,7 @@ ARG N8N_UPSTREAM_VERSION=2.43.6
 
 ARG BUILD_FROM=docker.io/n8nio/n8n:${N8N_UPSTREAM_VERSION}
 
-ARG BUILD_VERSION=2.43.6
+ARG BUILD_VERSION=2.43.7
 
 FROM docker.io/n8nio/runners:${N8N_UPSTREAM_VERSION} AS runner
 
@@ -130,6 +130,9 @@ RUN \
     apk --version; \
     rm -rf /tmp/*
 
+# python3 and python3-dev stay on the 3.14 the base ships: the Alpine branch
+# also offers python-3.15 now, py3-pip still needs python-3.14, and an
+# unpinned python3/python3-dev pulls both, which apk refuses (conflict).
 RUN \
     set -eux; \
     apk add --no-cache \
@@ -142,9 +145,9 @@ RUN \
         libssl3 \
         musl-utils \
         musl \
-        python3 \
+        python3~3.14 \
         py3-pip \
-        python3-dev \
+        python3-dev~3.14 \
         redis \
         nginx; \
     python3 -m venv /usr/local/lib/node_modules/@n8n/task-runner-python/.venv; \
