@@ -13,8 +13,13 @@ permissions:
 
 jobs:
   # The same tests, build and container smoke test as every pull request.
+  # actions: read is for ci.yml's Upgrade comparison job (a nested job only
+  # gets permissions its caller job has); on push that job passes at once.
   validate:
     name: Validate
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/ci.yml
 
   publish:
