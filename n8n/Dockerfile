@@ -130,6 +130,10 @@ RUN \
     apk --version; \
     rm -rf /tmp/*
 
+# python3 is for shells and Execute Command only; the Python task runner
+# brings its own interpreter (runner-python stage). It is pinned to 3.14
+# because Alpine moves its Python packages to 3.15 one at a time, and no
+# py3-pip or python3-dev is installed for the same reason.
 RUN \
     set -eux; \
     apk add --no-cache \
@@ -142,13 +146,9 @@ RUN \
         libssl3 \
         musl-utils \
         musl \
-        python3 \
-        py3-pip \
-        python3-dev \
+        python3~3.14 \
         redis \
         nginx; \
-    python3 -m venv /usr/local/lib/node_modules/@n8n/task-runner-python/.venv; \
-    /usr/local/lib/node_modules/@n8n/task-runner-python/.venv/bin/pip install --upgrade pip; \
     rm -rf /tmp/*
 
 # Set shell

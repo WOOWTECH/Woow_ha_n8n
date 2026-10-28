@@ -56,6 +56,19 @@ def main() -> None:
     assert "ln -sf /usr/bin/python3 /opt/runners/task-runner-python/.venv/bin/python" not in dockerfile, (
         "the Python runner venv must not be re-pointed at the base image's python3"
     )
+    # The base image's python3 is only for shells and Execute Command. Alpine
+    # moves python3, py3-pip and python3-dev to a new CPython at different
+    # times, so unpinned they resolve to conflicting versions.
+    system_apk = re.findall(r"apk add --no-cache \\\n(.*?);", dockerfile, re.DOTALL)
+    assert len(system_apk) == 1, f"expected one system apk add step, got {len(system_apk)}"
+    apk_packages = set(system_apk[0].replace("\\", " ").split())
+    assert "python3~3.14" in apk_packages, "the system python3 must be pinned to 3.14"
+    assert "python3" not in apk_packages, "an unpinned python3 follows Alpine to 3.15"
+    for package in ("py3-pip", "python3-dev"):
+        assert package not in apk_packages, f"{package} is not needed and conflicts across CPythons"
+    assert "@n8n/task-runner-python" not in dockerfile, (
+        "the Python runner lives in /opt/runners; no venv is built under node_modules"
+    )
 
     current = addon_info["source"]["current_version"]
     assert current == f"n8n@{upstream_version}", (

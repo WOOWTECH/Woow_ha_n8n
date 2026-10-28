@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The image builds again while Alpine moves its Python packages from 3.14 to 3.15: `python3` in shells and Execute Command nodes is pinned to Alpine's 3.14, and the unused `py3-pip`, `python3-dev` and the virtualenv under `/usr/local/lib/node_modules/@n8n/task-runner-python` are no longer installed. Shells therefore have no system `pip` (Alpine's pip already refused `pip install` under PEP 668). The Python Code node is unchanged.
+
 ## 2.43.6
 
 **Before updating: take a Home Assistant backup that includes this add-on.** This release upgrades the bundled n8n and task runners from 2.12.3 to 2.43.6. On its first start n8n migrates the database one way; n8n 2.12.3 cannot use the migrated data. The only rollback is restoring the pre-update backup, which brings back add-on 2.12.17 with its unmigrated database. Let the first start finish (the log shows `Migrations in progress, please do NOT stop the process.`).
