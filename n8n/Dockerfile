@@ -11,7 +11,7 @@ FROM docker.io/n8nio/runners:${N8N_UPSTREAM_VERSION} AS runner
 
 # The Python task runner's virtualenv and its compiled dependencies are built
 # for the runners image's own CPython (3.13 for n8n 2.43), not for the
-# distribution python3 of the n8n base (3.14). Stage that interpreter, found
+# shell python3 this Dockerfile installs (3.14, below). Stage that interpreter, found
 # through the venv's own symlink, so it is copied without naming a version.
 FROM runner AS runner-python
 # hadolint ignore=DL3002
@@ -132,8 +132,11 @@ RUN \
 
 # python3 is for shells and Execute Command only; the Python task runner
 # brings its own interpreter (runner-python stage). It is pinned to 3.14
-# because Alpine moves its Python packages to 3.15 one at a time, and no
-# py3-pip or python3-dev is installed for the same reason.
+# because the base image's first repository, Docker Hardened Images
+# (dhi.io/apk/alpine/v3.24/main), also carries python-3.15, which provides
+# python3 at a higher version; unpinned, apk installs 3.15. Alpine's own
+# v3.24 stays on 3.14, and dhi.io keeps its older 3.14 builds. No py3-pip or
+# python3-dev is installed: they resolved to different CPythons there.
 RUN \
     set -eux; \
     apk add --no-cache \
