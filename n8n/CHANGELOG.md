@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- The image builds again now that the Docker Hardened Images package repository of the base image also carries Python 3.15: `python3` in shells and Execute Command nodes is pinned to 3.14, and `py3-pip`, `python3-dev` and the unused virtualenv under `/usr/local/lib/node_modules/@n8n/task-runner-python` are no longer installed. Shells and Execute Command nodes therefore have no `pip` (including `pip install --break-system-packages`) and no Python headers (`Python.h`), so commands that install packages or build C extensions there fail. The Python Code node is unchanged.
+- The image builds again now that the Docker Hardened Images package repository of the base image also carries Python 3.15: `python3` in shells and Execute Command nodes is pinned to 3.14, and `py3-pip`, `python3-dev` and the unused virtualenv under `/usr/local/lib/node_modules/@n8n/task-runner-python` are no longer installed. Shells and Execute Command nodes therefore have no `pip` (including `pip install --break-system-packages`) and no Python headers (`Python.h`), so commands that install packages or build C extensions there fail. Scripts that use only the standard library still run with `python3`; move other Python logic into a Python Code node, which is unchanged.
 
 ## 2.43.6
 
