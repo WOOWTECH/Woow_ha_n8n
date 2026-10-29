@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The image builds again now that the Docker Hardened Images package repository of the base image also carries Python 3.15: `python3` in shells and Execute Command nodes is pinned to 3.14, and `py3-pip`, `python3-dev` and the unused virtualenv under `/usr/local/lib/node_modules/@n8n/task-runner-python` are no longer installed. Shells and Execute Command nodes therefore have no `pip` (including `pip install --break-system-packages`) and no Python headers (`Python.h`), so commands that install packages or build C extensions there fail. Scripts that use only the standard library still run with `python3`; move other Python logic into a Python Code node, which is unchanged.
+
 ## 2.43.6
 
 **Before updating: take a Home Assistant backup that includes this add-on.** This release upgrades the bundled n8n and task runners from 2.12.3 to 2.43.6. On its first start n8n migrates the database one way; n8n 2.12.3 cannot use the migrated data. The only rollback is restoring the pre-update backup, which brings back add-on 2.12.17 with its unmigrated database. Let the first start finish (the log shows `Migrations in progress, please do NOT stop the process.`).

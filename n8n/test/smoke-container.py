@@ -113,6 +113,13 @@ def check_secret_hygiene(addon: Addon) -> None:
     assert not leftovers, f"option secrets copied into {leftovers}"
 
 
+def check_system_python(addon: Addon) -> None:
+    version = addon.exec("python3 --version").strip()
+    assert version.startswith("Python 3.14."), f"system python3 is {version}"
+    pip_paths = addon.exec("command -v pip pip3 pip3.14 || true").strip()
+    assert not pip_paths, f"system pip is on PATH: {pip_paths}"
+
+
 def check_watchdog_and_ingress(addon: Addon) -> None:
     status, body = addon.supervisor_get("/_woow/watchdog")
     assert status == 200 and json.loads(body) == {"status": "ok"}, (status, body)
@@ -308,6 +315,7 @@ def main() -> None:
             print("processes checked:", len(processes))
             check_listeners(addon)
             check_secret_hygiene(addon)
+            check_system_python(addon)
             if browser:
                 browser_check(addon, workdir, str(workflow["id"]))
             check_proxy_logs(addon)
