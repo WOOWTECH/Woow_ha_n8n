@@ -4,6 +4,8 @@ name: CI
 # the way the release does, and smoke-tests the container (health, watchdog,
 # ingress in headless Chromium, JavaScript and Python Code nodes, secret
 # handling). The publish workflow calls this before it pushes any image.
+# A PR that changes the add-on version is also compared with the latest
+# formal Release ("Upgrade comparison / compare", pipeline #89).
 
 on:
   pull_request:
@@ -73,6 +75,38 @@ jobs:
             -t local/woow-n8n:ci \
             n8n
 
+      # The SBOM of this image is what the Upgrade comparison scans as the
+      # new version (pipeline #89, category 4): pinned Syft from the Store,
+      # uploaded as artifact upgrade-comparison-sbom-woow-n8n.
+      - name: SBOM for the upgrade comparison
+        if: github.event_name == 'pull_request'
+        uses: WOOWTECH/Woow_HA_App_Store/.github/actions/addon-sbom@main
+        with:
+          component: woow-n8n
+          image: local/woow-n8n:ci
+
       - name: Smoke-test the container
         working-directory: n8n/test
         run: python smoke-container.py local/woow-n8n:ci --browser
+
+  # Upgrade comparison (pipeline #89): a PR that bumps the add-on version is
+  # compared with the latest formal Release. A breaking config.yaml change
+  # not declared in n8n/upgrade-notes.yaml blocks it, and so does a new
+  # fixable Critical/High vulnerability in the amd64 image (the SBOM from the
+  # image job against the Release's GHCR image) unless that file accepts it.
+  # No needs: on the build, so a PR that changes no version passes in
+  # seconds; after a version bump the job waits for this run's SBOM artifact
+  # (actions: read) and fails if the image job never uploads it. On push, and
+  # when the publish workflow calls this file (its Validate job), the job
+  # passes at once, so that workflow's non-PR run (registry
+  # required_workflows) still succeeds. Reported as
+  # "Upgrade comparison / compare". The PR build and the publish build both
+  # run without a layer cache, so the SBOM is of what the Release ships.
+  upgrade-comparison:
+    name: Upgrade comparison
+    permissions:
+      contents: read
+      actions: read
+    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@main
+    with:
+      sbom_artifact: upgrade-comparison-sbom-*
