@@ -91,7 +91,7 @@ jobs:
       # comparison neither rebuilds it nor needs a PR tag on GHCR.
       - name: Image for the upgrade test
         if: github.event_name == 'pull_request'
-        uses: WOOWTECH/Woow_HA_App_Store/.github/actions/addon-image@main
+        uses: WOOWTECH/Woow_HA_App_Store/.github/actions/addon-image@feat/137-upgrade-test-startup-v2
         with:
           component: woow-n8n
           image: local/woow-n8n:ci
@@ -121,7 +121,9 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@main
+    uses: WOOWTECH/Woow_HA_App_Store/.github/workflows/woow-addon-upgrade-check.yml@feat/137-upgrade-test-startup-v2
     with:
       sbom_artifact: upgrade-comparison-sbom-*
       image_artifact: upgrade-comparison-image-*
+      # Pilot only (release-gating/137): run the Store PR #81 branch before it merges. Never merge this.
+      tooling_ref: feat/137-upgrade-test-startup-v2
