@@ -163,7 +163,12 @@ def state_path() -> str:
 def seed() -> int:
     n8n, checks, state = Client(os.environ["ADDON_URL"]), Checks(), {}
     ready = checks.run("n8n ready", n8n.wait_ready)
-    owner = checks.run("owner created", lambda: n8n.ok("POST", "/rest/owner/setup", OWNER) and OWNER["email"], ready)
+
+    def owner_setup() -> str:
+        # Returns the email even when the response data is empty, so a pass never skips what needs the owner.
+        n8n.ok("POST", "/rest/owner/setup", OWNER)
+        return OWNER["email"]
+    owner = checks.run("owner created", owner_setup, ready)
     credential = checks.run("encrypted credential created", lambda: n8n.ok("POST", "/rest/credentials", CREDENTIAL), owner)
     created = checks.run("workflow created", lambda: n8n.ok("POST", "/rest/workflows", workflow()), owner)
 
@@ -214,8 +219,17 @@ def seed() -> int:
 
 def verify() -> int:
     n8n, checks = Client(os.environ["ADDON_URL"]), Checks()
-    with open(state_path(), encoding="utf-8") as f:
-        state = json.load(f)
+
+    def read_state() -> dict[str, object]:
+        try:
+            with open(state_path(), encoding="utf-8") as f:
+                loaded = json.load(f)
+        except (OSError, ValueError) as error:
+            raise AssertionError(f"seed state {state_path()} unreadable (did seed run?): {error}") from error
+        assert isinstance(loaded, dict), f"seed state is not an object: {type(loaded).__name__}"
+        return loaded
+    state = checks.run("seed state readable", read_state)
+    seeded = state is not None
     ready = checks.run("migrations finished (n8n ready)", n8n.wait_ready)
     owner = checks.run("owner logs in", lambda: n8n.login() or OWNER["email"], ready)
 
@@ -225,22 +239,22 @@ def verify() -> int:
         assert data.get("name") == CREDENTIAL["data"]["name"], f"decrypted header name: {data.get('name')!r}"
         assert data.get("value"), "the secret value is gone"
         return f"decrypts (header {data['name']})"
-    checks.run("encrypted credential decrypts", credential, bool(owner))
+    checks.run("encrypted credential decrypts", credential, bool(owner) and seeded)
     def same_key() -> str:
         assert encryption_key_hash() == state["encryption_key_sha256"], "the encryption key in /config/.n8n/config changed"
         return "same key in /config/.n8n/config"
-    checks.run("encryption key unchanged", same_key)
+    checks.run("encryption key unchanged", same_key, seeded)
 
     def active() -> str:
         assert n8n.ok("GET", f"/rest/workflows/{state['workflow_id']}")["active"], "the upgrade deactivated the workflow"
         return "still active"
-    checks.run("workflow active", active, bool(owner))
+    checks.run("workflow active", active, bool(owner) and seeded)
 
     def executions() -> str:
         count = n8n.executions(state["workflow_id"])
         assert count >= state["executions"], f"{count} executions, {state['executions']} before the upgrade"
         return f"{count} executions ({state['executions']} before the upgrade)"
-    checks.run("executions kept", executions, bool(owner))
+    checks.run("executions kept", executions, bool(owner) and seeded)
     checks.run("workflow runs", lambda: code_nodes(n8n.webhook()), bool(ready))
 
     def api_key() -> str:
@@ -248,7 +262,7 @@ def verify() -> int:
         ids = [w.get("id") for w in listed] if isinstance(listed, list) else []
         assert state["workflow_id"] in ids, f"the public API lists {ids}"
         return "the public API lists the workflow"
-    checks.run("API key works", api_key, bool(ready))
+    checks.run("API key works", api_key, bool(ready) and seeded)
     return checks.finish("verify")
 
 
