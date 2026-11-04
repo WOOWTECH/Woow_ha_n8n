@@ -264,7 +264,7 @@ n8n/
 │       ├── check-ssl.sh          # SSL 憑證檢查（保留相容性）
 │       └── selfsigned-ssl-gen.sh # 自簽憑證產生（保留相容性）
 ├── test/                          # 測試（run-tests.sh、容器 smoke）
-├── upgrade-check/                 # 升級測試的資料檢查 hook（seed、verify，由 Store 執行）
+├── upgrade-check/                 # 升級比對的 hook（seed、verify 資料檢查，smoke 回歸比對；由 Store 執行）
 ├── translations/
 │   ├── en.yaml                   # 英文翻譯
 │   └── zh-Hant.yaml              # 繁體中文翻譯

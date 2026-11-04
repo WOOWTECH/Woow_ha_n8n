@@ -19,8 +19,13 @@ release mechanism is described in the Woow_HA_App_Store README (section
    `n8n/upgrade-check/verify` on this PR's image. Through n8n's own API
    (`n8n_upgrade.py`) seed writes the owner, an encrypted credential, an
    active webhook workflow with JavaScript and Python Code nodes, executions
-   and a public API key; verify reads them back after the migrations. Every
-   check is listed in the compare summary. Keep the hooks standard-library
+   and a public API key; verify reads them back after the migrations. The
+   regression comparison (pipeline #139) runs `n8n/upgrade-check/smoke`
+   (`n8n_smoke.py`, from `test/smoke-container.py`) on the Release after seed
+   and on this PR's image after verify, and compares its checks by name: a
+   check that passes on the Release must pass on this PR, so keep check names
+   stable; a check that already fails on the Release is only reported, and a
+   new check must pass. Every check is listed in the compare summary. Keep the hooks standard-library
    Python (they run in the Store's python:3.12-alpine mock Supervisor
    container), executable (`git update-index --chmod=+x`), and never
    `docker run` from them. A PR that changes no version passes it in seconds. The

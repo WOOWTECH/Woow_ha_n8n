@@ -107,7 +107,9 @@ jobs:
   # image job against the Release's GHCR image) unless that file accepts it.
   # The upgrade test (#137) starts the Release's GHCR image, then this PR's
   # image (the image job's artifact) on the same /data and map directories;
-  # a new version that does not start blocks. Startup only, no data check yet.
+  # a new version that does not start blocks. The Store runs the hooks in
+  # n8n/upgrade-check: seed and verify check that the data survives (#138),
+  # smoke runs on both versions and a check that regresses blocks (#139).
   # No needs: on the build, so a PR that changes no version passes in
   # seconds; after a version bump the job waits for this run's SBOM artifact
   # (actions: read) and fails if the image job never uploads it. On push, and
