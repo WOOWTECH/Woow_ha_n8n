@@ -14,8 +14,16 @@ release mechanism is described in the Woow_HA_App_Store README (section
    It compares each addon whose version the PR changes with the latest Stable
    Release. It also runs the upgrade test (pipeline #137): the Release's
    image, then this PR's amd64 image on the same data directories, under a
-   mock Supervisor; the new version must start. For now it checks startup
-   only, not data. A PR that changes no version passes it in seconds. The
+   mock Supervisor; the new version must start and keep its data (pipeline
+   #138): the Store runs `n8n/upgrade-check/seed` on the Release, then
+   `n8n/upgrade-check/verify` on this PR's image. Through n8n's own API
+   (`n8n_upgrade.py`) seed writes the owner, an encrypted credential, an
+   active webhook workflow with JavaScript and Python Code nodes, executions
+   and a public API key; verify reads them back after the migrations. Every
+   check is listed in the compare summary. Keep the hooks standard-library
+   Python (they run in the Store's python:3.12-alpine mock Supervisor
+   container), executable (`git update-index --chmod=+x`), and never
+   `docker run` from them. A PR that changes no version passes it in seconds. The
    result is in the job summary. To re-run it, use "Re-run all jobs", not
    "Re-run failed jobs": a re-run judges its own build, and an earlier
    attempt's SBOM and image are not used.

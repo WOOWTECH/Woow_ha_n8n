@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+"""Upgrade test hook: read the seeded n8n data back on the new version (see n8n_upgrade.py)."""
+import n8n_upgrade
+
+n8n_upgrade.main("verify")
