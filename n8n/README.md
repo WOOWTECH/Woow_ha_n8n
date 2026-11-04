@@ -263,7 +263,8 @@ n8n/
 │       ├── woow-n8n-startup-guard # 首次就緒前讓 watchdog 回報「啟動中」
 │       ├── check-ssl.sh          # SSL 憑證檢查（保留相容性）
 │       └── selfsigned-ssl-gen.sh # 自簽憑證產生（保留相容性）
-├── test/                          # 測試（run-tests.sh、容器 smoke、升級 smoke）
+├── test/                          # 測試（run-tests.sh、容器 smoke）
+├── upgrade-check/                 # 升級測試的資料檢查 hook（seed、verify，由 Store 執行）
 ├── translations/
 │   ├── en.yaml                   # 英文翻譯
 │   └── zh-Hant.yaml              # 繁體中文翻譯

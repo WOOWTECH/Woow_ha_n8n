@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+"""Upgrade test hook: write n8n data on the comparison target (see n8n_upgrade.py)."""
+import n8n_upgrade
+
+n8n_upgrade.main("seed")
