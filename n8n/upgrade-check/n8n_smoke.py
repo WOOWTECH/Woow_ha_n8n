@@ -15,8 +15,8 @@ keeps the checks that can be seen from there:
   rewritten preload builder); no Content-Security-Policy; the owner signs in;
   a webhook workflow runs a JavaScript and a native Python Code node in the
   task runners, and neither can read the Supervisor or task broker token; the
-  task broker and Redis are not reachable from the network; the task broker
-  token is a per-installation root-only file.
+  task broker and Redis refuse connections from the network; the task broker
+  token is a root-only file that is not the default.
 
 What needs `docker exec`, the add-on's log or a restart (processes and their
 environments, secrets in the log, system Python, the browser check, the token
@@ -49,7 +49,12 @@ JS_CODE = """return [{json: {
 }}];"""
 PY_CODE = """import os
 previous = _items[0]["json"]
-return [{"json": {**previous, "py": sum(range(10)), "pyEnvSupervisor": os.environ.get("SUPERVISOR_TOKEN")}}]"""
+return [{"json": {**previous, "py": sum(range(10)),
+                  "pySupervisor": os.environ.get("SUPERVISOR_TOKEN"),
+                  "pyHassio": os.environ.get("HASSIO_TOKEN"),
+                  "pyBroker": os.environ.get("N8N_RUNNERS_AUTH_TOKEN")}}]"""
+# The token fields each Code node returns: all must be None.
+TOKEN_FIELDS = ("supervisor", "hassio", "broker", "pySupervisor", "pyHassio", "pyBroker")
 
 
 def workflow(path: str) -> dict[str, object]:
@@ -142,12 +147,11 @@ def smoke() -> int:
     checks.run("no Content-Security-Policy", no_csp, bool(ready))
 
     def owner() -> str:
-        # seed made the owner on the comparison target; without one (a fresh install) smoke sets it up.
-        status, _ = n8n.request("POST", "/rest/login", {"emailOrLdapLoginId": OWNER["email"], "password": OWNER["password"]})
-        if 200 <= status < 300:
-            return "logged in"
-        n8n.ok("POST", "/rest/owner/setup", OWNER)
-        return f"set up (login answered {status})"
+        # seed made the owner before smoke runs on either version; never set one up here, or a new version
+        # that lost the owner would still pass.
+        status, payload = n8n.request("POST", "/rest/login", {"emailOrLdapLoginId": OWNER["email"], "password": OWNER["password"]})
+        assert 200 <= status < 300, f"login -> {status} {str(payload)[:200]}"
+        return "logged in"
     signed_in = checks.run("owner signs in", owner, bool(ready))
 
     def code_nodes() -> dict[str, object]:
@@ -172,21 +176,27 @@ def smoke() -> int:
 
     def hidden_tokens() -> str:
         result = state["result"]
-        visible = [k for k in ("supervisor", "hassio", "broker", "pyEnvSupervisor") if result.get(k) is not None]
+        missing = [k for k in TOKEN_FIELDS if k not in result]
+        assert not missing, f"the Code nodes did not report {missing}"
+        visible = [k for k in TOKEN_FIELDS if result[k] is not None]
         assert not visible, f"a workflow can read {visible}"
         return "SUPERVISOR_TOKEN, HASSIO_TOKEN and N8N_RUNNERS_AUTH_TOKEN are hidden from both Code nodes"
     checks.run("workflows cannot read tokens", hidden_tokens, bool(ran))
 
     def loopback_only() -> str:
-        reachable = []
+        # Only a refused connection proves nothing listens there: a timeout or another error proves nothing.
+        ports = ", ".join(f"{name} ({number})" for name, number in LOOPBACK_ONLY.items())
+        problems = []
         for name, number in LOOPBACK_ONLY.items():
             try:
                 socket.create_connection((host, number), timeout=5).close()
-                reachable.append(f"{name} ({number})")
-            except OSError:
+                problems.append(f"{name} ({number}) is reachable from the network")
+            except ConnectionRefusedError:
                 pass
-        assert not reachable, f"reachable from the network: {', '.join(reachable)}"
-        return "task broker (5679) and Redis (6379) refuse connections from the Supervisor's address"
+            except OSError as error:
+                problems.append(f"{name} ({number}) did not refuse the connection: {error}")
+        assert not problems, "; ".join(problems)
+        return f"{ports} refuse connections from the Supervisor's address"
     checks.run("task broker and Redis on loopback only", loopback_only, bool(ready))
 
     def broker_token() -> str:
@@ -195,7 +205,7 @@ def smoke() -> int:
         assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_uid == 0, f"{oct(stat.S_IMODE(info.st_mode))} uid {info.st_uid}"
         with open(path, encoding="utf-8") as f:
             token = f.read().strip()
-        assert len(token) == 64 and token != "n8n-runner", "the task broker token is not per installation"
-        return "/data/n8n-runners-auth-token is 600 root, 64 characters"
-    checks.run("task broker token is per install", broker_token, bool(ready))
+        assert len(token) == 64 and token != "n8n-runner", "the task broker token is the default or not 64 characters"
+        return f"{path} is 600 root, 64 characters, not the default"
+    checks.run("task broker token is root-only and not the default", broker_token, bool(ready))
     return checks.finish("smoke")
