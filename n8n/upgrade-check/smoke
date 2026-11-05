@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""Upgrade test hook (category 3): the same checks on the comparison target and the new version (see n8n_smoke.py)."""
+import sys
+
+import n8n_smoke
+
+sys.exit(n8n_smoke.smoke())
